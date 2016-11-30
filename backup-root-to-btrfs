@@ -50,11 +50,28 @@ if [[ "$(id -u)" -ne "0" ]]; then
 fi
 
 if [[ ! -d $backupPath ]]; then
-	usage
-else
-	#Get rid of trailing slash if there is one. see http://www.network-theory.co.uk/docs/bashref/ShellParameterExpansion.html
-	backupPath=${backupPath%/}
+
+	# Offer to create the backup path
+	if [[ ! -e $backupPath ]]; then
+		read -n 1 -p "$backupPath doesn't exist, do you want to create it? [Y/N] " doICreateDir
+		echo
+
+		case $doICreateDir in
+			[yY])
+				mkdir -p "$backupPath"
+				;;
+			*)
+				echo "Good bye"
+				exit 1
+				;;
+		esac
+	else
+		usage
+	fi
 fi
+
+#Get rid of trailing slash if there is one. see http://www.network-theory.co.uk/docs/bashref/ShellParameterExpansion.html
+backupPath=${backupPath%/}
 
 #
 # End of preconditions
