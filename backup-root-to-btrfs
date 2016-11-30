@@ -1,0 +1,99 @@
+#!/bin/bash
+
+#Shows usage of the command
+usage() {
+	echo "Usage: $0 PATH-TO-BACKUP"
+	echo " PATH-TO-BACKUP being stored in a btrfs storage and not inside the current filesystem"
+	exit
+}
+
+#Outputs the find param to exclude directories from the backup
+findExcludeParams() {
+	local excludeDirs=$1
+	local processedOnce=
+	str="-type d \( "
+	for dir in $excludeDirs
+	do
+		if [ ! $processedOnce ]
+		then
+		       	str+="-path $dir "
+			processedOnce=1
+		else 
+			str+=" -o -path $dir"
+		fi
+	done
+	str+=" \) -prune"
+	echo $str
+}
+
+#Outputs the rsync param to exclude directories from the backup
+rsyncExcludeParams() {
+	local excludeDirs=$1
+	for dir in $excludeDirs
+	do
+		str+="--exclude=$dir/* "
+	done
+	echo $str
+}
+
+
+excludeDirs="/dev /proc /sys /tmp /run /mnt /media /lost+found"
+backupPath=$1
+
+#
+# Pre conditions. Checking params are OK
+#
+
+if [[ "$(id -u)" -ne "0" ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+if [[ ! -d $backupPath ]]; then
+	usage
+else
+	#Get rid of trailing slash if there is one. see http://www.network-theory.co.uk/docs/bashref/ShellParameterExpansion.html
+	backupPath=${backupPath%/}
+fi
+
+#
+# End of preconditions
+#
+
+#
+# execute a find on the 'to backup' tree against the backup target to ensure
+# backup target will not be included in the backup itself
+#
+echo "Checking backup does not include the target path..."
+findExcludeParams="$(findExcludeParams "$excludeDirs")"
+findParams=""${findExcludeParams}" -o \( -type d -and -path ${backupPath} \) -print"
+findRes=$(eval find / "${findParams}")
+
+if [[ ! -z "$findRes" ]]; then
+	echo "$backupPath would be backup-ed too. This is not wanted. Please choose another target path" 1>&2
+	exit 1
+fi
+
+#
+# Perform the backup
+#
+echo "Dry run..."
+rsyncExcludeParams="$(rsyncExcludeParams "$excludeDirs")"
+rsyncParams="-aAX --delete --stats --info=progress2 "${rsyncExcludeParams}" / "${backupPath}""
+echo "Performing dry-run backup"
+eval "rsync --dry-run ${rsyncParams}"
+
+echo
+
+read -n 1 -p "Do you want to perform the real backup to ${backupPath}? [Y/N] " response
+echo
+
+case $response in
+	[yY])
+		eval "rsync ${rsyncParams}"
+		;;
+	*)
+		echo "Good bye"
+		;;
+esac
+

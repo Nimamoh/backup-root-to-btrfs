@@ -1,0 +1,10 @@
+[Unit]
+Description=Offer to backup whole system when media is plugged in
+Requires=MOUNT-TARGET.mount
+After=MOUNT-TARGET.mount
+
+[Service]
+ExecStart=backup-root-to-btrfs-notify $(systemctl show MOUNT-TARGET.mount --property=Where | cut -c 7-)/BACKUP-OF-$(hostname)
+
+[Install]
+WantedBy=MOUNT-TARGET.mount
