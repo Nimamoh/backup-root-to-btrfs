@@ -4,7 +4,7 @@ Requires=MOUNT-TARGET.mount
 After=MOUNT-TARGET.mount
 
 [Service]
-ExecStart=/usr/bin/backup-root-to-btrfs-notify $(systemctl show MOUNT-TARGET.mount --property=Where | cut -c 7-)/BACKUP-OF-$(hostname)
+ExecStart=/bin/bash -c "/usr/bin/backup-root-to-btrfs-notify $(systemctl show MOUNT-TARGET.mount --property=Where | cut -c 7-)/BACKUP-OF-$(hostname)"
 
 [Install]
 WantedBy=MOUNT-TARGET.mount
